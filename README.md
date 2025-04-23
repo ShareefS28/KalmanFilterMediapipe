@@ -1,5 +1,7 @@
 # KalmanFilterMediapipe
-#### Use Kalman from OpenCV
+
+## Python
+**OpenCV kalmanfilter was a standard kalman (Linear Kalman)**
 ```bash
 python Python/cv_mpHolistic.py
 ```
@@ -21,3 +23,5 @@ conda env create --file <conda_env_file>.yml
 ```bash
 conda env create --file environment.yml --name <env_name>
 ```
+
+<!-- ## C++ -->
