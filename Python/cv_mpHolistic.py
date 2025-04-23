@@ -53,7 +53,10 @@ with mp_holistic.Holistic(
         model_complexity=1,
         smooth_landmarks=True,
         enable_segmentation=False,
-        refine_face_landmarks=True,
+        smooth_segmentation=True,
+        refine_face_landmarks=False,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
     ) as holistic:
     while cap.isOpened():
         ret, frame = cap.read()
@@ -77,7 +80,7 @@ with mp_holistic.Holistic(
                 kf_face[i].correct(measured)
                 prediction = kf_face[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0]), int(prediction[1]), int(prediction[2])
+                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
                 results.face_landmarks.landmark[i].x = pred_x / w
                 results.face_landmarks.landmark[i].y = pred_y / h
                 results.face_landmarks.landmark[i].z = pred_z
@@ -111,7 +114,7 @@ with mp_holistic.Holistic(
                 kf_pose[i].correct(measured)
                 prediction = kf_pose[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0]), int(prediction[1]), int(prediction[2])
+                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
                 results.pose_landmarks.landmark[i].x = pred_x / w
                 results.pose_landmarks.landmark[i].y = pred_y / h
                 results.pose_landmarks.landmark[i].z = pred_z
@@ -135,7 +138,7 @@ with mp_holistic.Holistic(
                 kf_right_hand[i].correct(measured)
                 prediction = kf_right_hand[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0]), int(prediction[1]), int(prediction[2])
+                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
                 results.right_hand_landmarks.landmark[i].x = pred_x / w
                 results.right_hand_landmarks.landmark[i].y = pred_y / h
                 results.right_hand_landmarks.landmark[i].z = pred_z
@@ -159,7 +162,7 @@ with mp_holistic.Holistic(
                 kf_left_hand[i].correct(measured)
                 prediction = kf_left_hand[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0]), int(prediction[1]), int(prediction[2])
+                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
                 results.left_hand_landmarks.landmark[i].x = pred_x / w
                 results.left_hand_landmarks.landmark[i].y = pred_y / h
                 results.left_hand_landmarks.landmark[i].z = pred_z
