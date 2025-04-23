@@ -11,10 +11,13 @@ mp_holistic = mp.solutions.holistic
 x y z is position
 dx dy dz is velocities
 '''
-def create_kf(smoothness: float = 0.03) -> cv2.KalmanFilter:
+def create_kf(smoothness: float = 0.03, measurementNoiseCov: float = 0.1, errorCovPost: float = 1e4) -> cv2.KalmanFilter:
     kf = cv2.KalmanFilter(dynamParams=6, measureParams=3) # 6 dynamic parameters: [x, y, z, dx, dy, dz], 3 measurement parameters: [x, y, z]
+
+    # Initial state estimate: [x, y, z, dx, dy, dz] (Position and velocity)
+    kf.statePost = np.zeros((6, 1), dtype=np.float32)  # Initial state: [x, y, z, dx, dy, dz]
     
-    # Measurement matrix: extract position (x, y, z) from state vector
+    # Measurement matrix: maps state vector (x, y, z, dx, dy, dz) to the measured values (x, y, z)
     kf.measurementMatrix = np.array([
             [1, 0, 0, 0, 0, 0], # x
             [0, 1, 0, 0, 0, 0], # y
@@ -22,7 +25,7 @@ def create_kf(smoothness: float = 0.03) -> cv2.KalmanFilter:
         ], dtype=np.float32
     )
 
-    # Transition matrix: constant velocity model for 3D
+    # Transition matrix: models the object's motion over time using a constant velocity model in 3D (position and velocity)
     kf.transitionMatrix = np.array([
             [1, 0, 0, 1, 0, 0],  # x' = x + dx
             [0, 1, 0, 0, 1, 0],  # y' = y + dy
@@ -33,8 +36,17 @@ def create_kf(smoothness: float = 0.03) -> cv2.KalmanFilter:
         ], dtype=np.float32
     )
 
-    # Process noise: tweak the multiplier to tune smoothness
-    kf.processNoiseCov = np.eye(6, dtype=np.float32) * smoothness
+    '''
+    multiply value can adjust for proper each devices sensor.
+    '''
+    # Process noise: models uncertainty in the object's motion; higher value makes the filter trust predictions more and move slower
+    kf.processNoiseCov = np.eye(6, dtype=np.float32) * smoothness # higher value more slower, lower value more faster
+
+    # Measurement noise covariance: models uncertainty in the sensor measurements (position only)
+    kf.measurementNoiseCov = np.eye(3, dtype=np.float32) * measurementNoiseCov # 0.1 (moderate default value). Controls the noise level position. Increase when erratic, Decrese when stiff 
+
+    # Initial error covariance: models initial uncertainty in the state estimate; higher value means more uncertainty in the initial state
+    kf.errorCovPost = np.eye(6, dtype=np.float32) * errorCovPost # 1e4 (moderate default value). Increase when overtrusting guess, Decrease when correcting too much
 
     return kf
 
@@ -71,19 +83,26 @@ with mp_holistic.Holistic(
 
         if results.face_landmarks:
             for i, landmark in enumerate(results.face_landmarks.landmark):
-                x = int(landmark.x * w)
-                y = int(landmark.y * h)
-                z = int(landmark.z)
+                x = landmark.x * w
+                y = landmark.y * h
+                z = landmark.z
 
                 # Update Kalman filter for the current landmark
                 measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
                 kf_face[i].correct(measured)
                 prediction = kf_face[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
-                results.face_landmarks.landmark[i].x = pred_x / w
-                results.face_landmarks.landmark[i].y = pred_y / h
-                results.face_landmarks.landmark[i].z = pred_z
+                '''
+                    VISUALIZATION convert to int for more stable drawing.
+
+                    CONTINUOS_DATA use floating point for more precision and continuous.
+                '''
+                # value from kalman
+                pred_x, pred_y, pred_z = prediction[0][0], prediction[1][0], prediction[2][0]
+
+                results.face_landmarks.landmark[i].x = int(pred_x) / w
+                results.face_landmarks.landmark[i].y = int(pred_y) / h
+                results.face_landmarks.landmark[i].z = int(pred_z)
 
             # draw Face Contours
             mp_drawing.draw_landmarks(
@@ -105,19 +124,20 @@ with mp_holistic.Holistic(
         if results.pose_landmarks:
             for i, landmark in enumerate(results.pose_landmarks.landmark):
                 # Get the (x, y) position of the landmark
-                x = int(landmark.x * w)
-                y = int(landmark.y * h)
-                z = int(landmark.z)
+                x = landmark.x * w
+                y = landmark.y * h
+                z = landmark.z
 
                 # Update Kalman filter for the current landmark
                 measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
                 kf_pose[i].correct(measured)
                 prediction = kf_pose[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
-                results.pose_landmarks.landmark[i].x = pred_x / w
-                results.pose_landmarks.landmark[i].y = pred_y / h
-                results.pose_landmarks.landmark[i].z = pred_z
+                pred_x, pred_y, pred_z = prediction[0][0], prediction[1][0], prediction[2][0]
+
+                results.pose_landmarks.landmark[i].x = int(pred_x) / w
+                results.pose_landmarks.landmark[i].y = int(pred_y) / h
+                results.pose_landmarks.landmark[i].z = int(pred_z)
             
             mp_drawing.draw_landmarks(
                 image=frame,
@@ -129,19 +149,21 @@ with mp_holistic.Holistic(
         if results.right_hand_landmarks:
             for i, landmark in enumerate(results.right_hand_landmarks.landmark):
                 # Get the (x, y) position of the landmark
-                x = int(landmark.x * w)
-                y = int(landmark.y * h)
-                z = int(landmark.z)
+                x = landmark.x * w
+                y = landmark.y * h
+                z = landmark.z
 
                 # Update Kalman filter for the current landmark
                 measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
                 kf_right_hand[i].correct(measured)
                 prediction = kf_right_hand[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
-                results.right_hand_landmarks.landmark[i].x = pred_x / w
-                results.right_hand_landmarks.landmark[i].y = pred_y / h
-                results.right_hand_landmarks.landmark[i].z = pred_z
+                # value from kalman
+                pred_x, pred_y, pred_z = prediction[0][0], prediction[1][0], prediction[2][0]
+
+                results.right_hand_landmarks.landmark[i].x = int(pred_x) / w
+                results.right_hand_landmarks.landmark[i].y = int(pred_y) / h
+                results.right_hand_landmarks.landmark[i].z = int(pred_z)
 
             mp_drawing.draw_landmarks(
                 image=frame,
@@ -153,19 +175,21 @@ with mp_holistic.Holistic(
         if results.left_hand_landmarks:
             for i, landmark in enumerate(results.left_hand_landmarks.landmark):
                 # Get the (x, y) position of the landmark
-                x = int(landmark.x * w)
-                y = int(landmark.y * h)
-                z = int(landmark.z)
+                x = landmark.x * w
+                y = landmark.y * h
+                z = landmark.z
 
                 # Update Kalman filter for the current landmark
                 measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
                 kf_left_hand[i].correct(measured)
                 prediction = kf_left_hand[i].predict()
 
-                pred_x, pred_y, pred_z = int(prediction[0][0]), int(prediction[1][0]), int(prediction[2][0])
-                results.left_hand_landmarks.landmark[i].x = pred_x / w
-                results.left_hand_landmarks.landmark[i].y = pred_y / h
-                results.left_hand_landmarks.landmark[i].z = pred_z
+                # value from kalman
+                pred_x, pred_y, pred_z = prediction[0][0], prediction[1][0], prediction[2][0]
+
+                results.left_hand_landmarks.landmark[i].x = int(pred_x) / w
+                results.left_hand_landmarks.landmark[i].y = int(pred_y) / h
+                results.left_hand_landmarks.landmark[i].z = int(pred_z)
 
             mp_drawing.draw_landmarks(
                 image=frame,
