@@ -25,3 +25,16 @@ conda env create --file environment.yml --name <env_name>
 ```
 
 <!-- ## C++ -->
+
+<!-- Step | What is happening? <br>
+1 | Use f(x) to predict where you go next. <br>
+2 | Use jacobian_f() to linearize motion. <br>
+3 | Update covariance with prediction uncertainty. <br>
+4 | Wait for new measurement z. <br>
+5 | Use h(x) to predict how the world looks. <br>
+6 | Use jacobian_h() to linearize the camera view. <br>
+7 | Calculate the innovation y = z - h(x). <br>
+8 | Calculate Kalman Gain to balance trust between prediction and measurement. <br>
+9 | Update state using measurement. <br>
+10 | Update covariance to reflect new confidence. <br>
+11 | Repeat for next frame <br> -->
