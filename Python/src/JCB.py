@@ -11,7 +11,7 @@ State (x)
     --[jacobian_f()]--> Linear motion model
     --[jacobian_h()]--> Linear measurement model
 '''
-class JacobianMatrix:
+class JacobianMatrix():
     def __init__(self):
         ...
     

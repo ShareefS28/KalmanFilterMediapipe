@@ -79,6 +79,7 @@ with mp_holistic.Holistic(
         if not ret:
             break
         
+        frame.flags.writeable = True
         # frame = cv2.flip(frame, 1)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = holistic.process(rgb_frame)

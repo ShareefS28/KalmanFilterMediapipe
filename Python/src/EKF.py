@@ -1,12 +1,12 @@
 import numpy as np
-from JCB import JacobianMatrix as JCB
+from .JCB import JacobianMatrix as JCB
 
-'''
+"""
 Extended Kalman Filter https://en.wikipedia.org/wiki/Extended_Kalman_filter
 https://en.wikipedia.org/wiki/Kalman_filter
-'''
+"""
 
-class ExtendedKalmanFilter:
+class ExtendedKalmanFilter():
     '''
         Initialize the Extended Kalman Filter.
 
@@ -22,7 +22,7 @@ class ExtendedKalmanFilter:
         - R: Measurement noise covariance matrix.
         - damping: Velocity damping factor for the motion model.
     '''
-    def __init__(self, state_dim_row: int, Q: np.ndarray, R: np.ndarray):
+    def __init__(self, state_dim_row: int, Q: np.ndarray, R: np.ndarray, damping: float=0.05):
         self.JCB = JCB()
         self.x = np.zeros(shape=(state_dim_row, 1))
         self.P = np.eye(N=state_dim_row, k=0)
@@ -43,7 +43,7 @@ class ExtendedKalmanFilter:
         - Predict the next covariance P based on F and process noise Q.
     '''
     def predict(self, dt: float = 1.0):
-        F = self.JCB.jacobian_f(dt=dt, damping=self.damping)
+        F = self.JCB.jacobian_f(x=self.x, dt=dt, damping=self.damping)
         self.x = self.JCB.f(x=self.x, dt=dt, damping=self.damping)
         self.P = (F @ self.P @ F.T) + self.Q
 
