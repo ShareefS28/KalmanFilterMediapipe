@@ -23,7 +23,7 @@ cv2.resizeWindow(WINNAME, WIDTH, HEIGHT)
 ekf = ExtendedKalmanFilter(
   x = np.zeros(shape=(6, 1)), # [px, py, pz, vx, vy, vz]
   Q = np.eye(6) * 0.01,       # process noise
-  R = np.eye(2) * 5,          # Measurement noise (pixels) 2 dimension x y
+  R = np.diag([5, 5, 5]),    # trust x y , distrust z
   damping = 0.05
 )
 
@@ -91,8 +91,8 @@ with mp_holistic.Holistic(
       y = wrist_test.y * h
       z = wrist_test.z
 
-      # Prepare measurement vector z (u, v)
-      measured_z = np.array([[np.float32(x)], [np.float32(y)]])
+      # Prepare measurement
+      measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
       
       # Predict next state
       ekf.x[0][0] = wrist_test.x
@@ -100,20 +100,25 @@ with mp_holistic.Holistic(
       ekf.x[2][0] = wrist_test.z
       ekf.predict(dt = DT)
 
-      # Correct with actual measurement vector z
-      corrected_x, convariance_P = ekf.update(z = measured_z)
+      # # Correct with actual measurement vector z
+      corrected_x, convariance_P = ekf.update(measurement = measured)
 
       # value from kalman
       pred_x, pred_y, pred_z = corrected_x[0, 0], corrected_x[1, 0], corrected_x[2, 0]
 
-      results.right_hand_landmarks.landmark[0].x = pred_x * w
-      results.right_hand_landmarks.landmark[0].y = pred_y * h
+      # print(f"Raw_x: {wrist_test.x}, pred_x: {pred_x}")
+      # print(f"Raw_y: {wrist_test.y}, pred_y: {pred_y}")
+      print(f"Raw_z: {wrist_test.z}, pred_z: {pred_z}")
+
+      results.right_hand_landmarks.landmark[0].x = pred_x
+      results.right_hand_landmarks.landmark[0].y = pred_y
+      results.right_hand_landmarks.landmark[0].z = pred_z
 
       mp_drawing.draw_landmarks(
-        image=frame,
-        landmark_list=results.right_hand_landmarks,
-        connections=mp_holistic.HAND_CONNECTIONS,
-        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+          image=frame,
+          landmark_list=results.right_hand_landmarks,
+          connections=mp_holistic.HAND_CONNECTIONS,
+          landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
       )
 
     cv2.imshow(WINNAME, frame)

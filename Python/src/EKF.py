@@ -68,9 +68,9 @@ class ExtendedKalmanFilter():
         - Update the state estimate x using the innovation and Kalman Gain.
         - Update the estimate covariance P.
     '''
-    def update(self, z: np.ndarray):
+    def update(self, measurement: np.ndarray):
         H = self.JCB.jacobian_h(x=self.x)
-        y = z - self.JCB.h(x=self.x)
+        y = measurement - self.JCB.h(x=self.x)
         S = (H @ self.P @ H.T) + self.R
         K = (self.P @ H.T @ np.linalg.inv(S))
         self.x = self.x + (K @ y)

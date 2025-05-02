@@ -59,13 +59,14 @@ class JacobianMatrix():
     '''
     @staticmethod
     def h(x: np.ndarray):
-        fx, fy = 1000, 1000  # focal lengths
-        cx, cy = 320, 240    # camera center
+        # fx, fy = 1000, 1000   # focal length is omit cause working in normalized image coordinates. [0, 1]
+        # cx, cy = 320, 240     # camera center is omit cause working in normalized image coordinates. [0, 1]
 
         px, py, pz = x[0, 0], x[1, 0], x[2, 0]
-        u = fx * px / pz + cx
-        v = fy * py / pz + cy
-        return np.array([[u], [v]])
+        u = px / pz
+        v = py / pz
+        depth = pz
+        return np.array([[u], [v], [depth]])
 
     '''
         Jacobian matrix of the motion model f(x, dt)
@@ -102,16 +103,22 @@ class JacobianMatrix():
     '''
     @staticmethod
     def jacobian_h(x: np.ndarray):
-        fx, fy = 1000, 1000
+        # fx, fy = 1000, 1000                       # focal length is omit cause working in normalized image coordinates. [0, 1]
         px, py, pz = x[0, 0], x[1, 0], x[2, 0]
-        H = np.zeros((2, 6))                        # 2 rows (u and v), 6 columns (px, py, pz, vx, vy, vz)
+        H = np.zeros((3, 6))                        # 3 rows (u, v, depth or z), 6 columns (px, py, pz, vx, vy, vz)
         
         '''
             Calculus Quotient Rule
         '''
-        H[0, 0] = fx / pz                           # du/dpx = fx / pz
-        H[0, 2] = -fx * px / (pz**2)                # du/dpz = -fx * px / pz^2
-        H[1, 1] = fy / pz                           # dv/dpy = fy / pz
-        H[1, 2] = -fy * py / (pz**2)                # dv/dpz = -fy * py / pz^2
+        # Partial derivatives for u = fx * px / pz
+        H[0, 0] = 1.0 / pz
+        H[0, 2] = -px / (pz**2)
+
+        # Partial derivatives for v = fy * py / pz
+        H[1, 1] = 1.0 / pz
+        H[1, 2] = -py / (pz**2)
+
+        # Partial derivatives for z = pz
+        H[2, 2] = 1.0
 
         return H
