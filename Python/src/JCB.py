@@ -104,11 +104,14 @@ class JacobianMatrix():
     def jacobian_h(x: np.ndarray):
         fx, fy = 1000, 1000
         px, py, pz = x[0, 0], x[1, 0], x[2, 0]
-        H = np.zeros((2, 6))
-
-        H[0, 0] = fx / pz
-        H[0, 2] = -fx * px / (pz**2)
-        H[1, 1] = fy / pz
-        H[1, 2] = -fy * py / (pz**2)
+        H = np.zeros((2, 6))                        # 2 rows (u and v), 6 columns (px, py, pz, vx, vy, vz)
+        
+        '''
+            Calculus Quotient Rule
+        '''
+        H[0, 0] = fx / pz                           # du/dpx = fx / pz
+        H[0, 2] = -fx * px / (pz**2)                # du/dpz = -fx * px / pz^2
+        H[1, 1] = fy / pz                           # dv/dpy = fy / pz
+        H[1, 2] = -fy * py / (pz**2)                # dv/dpz = -fy * py / pz^2
 
         return H

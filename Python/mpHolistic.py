@@ -7,7 +7,9 @@ WIDTH = 640
 HEIGHT = 480
 FPS = 30
 WINNAME = "mediaipe_EKF"
-DT = 1/30
+DT = 1/FPS
+MIN_DEPTH = 0.1  # minimum depth (10 cm)
+MAX_DEPTH = 10.0  # maximum depth (10 meters)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -19,9 +21,9 @@ cv2.namedWindow(WINNAME, cv2.WINDOW_GUI_NORMAL)
 cv2.resizeWindow(WINNAME, WIDTH, HEIGHT)
 
 ekf = ExtendedKalmanFilter(
-  state_dim_row = 6,    # [px, py, pz, vx, vy, vz]
-  Q = np.eye(6) * 0.01, # process noise
-  R = np.eye(2) * 5,    # Measurement noise (pixels) 2 dimension x y
+  x = np.zeros(shape=(6, 1)), # [px, py, pz, vx, vy, vz]
+  Q = np.eye(6) * 0.01,       # process noise
+  R = np.eye(2) * 5,          # Measurement noise (pixels) 2 dimension x y
   damping = 0.05
 )
 
@@ -44,7 +46,7 @@ with mp_holistic.Holistic(
       continue
 
     frame.flags.writeable = True
-    # frame = cv2.flip(frame, 1)
+    frame = cv2.flip(frame, 1)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # Recolor frame
     results = holistic.process(rgb_frame) # Make Detection
 
@@ -93,25 +95,26 @@ with mp_holistic.Holistic(
       measured_z = np.array([[np.float32(x)], [np.float32(y)]])
       
       # Predict next state
+      ekf.x[0][0] = wrist_test.x
+      ekf.x[1][0] = wrist_test.y
+      ekf.x[2][0] = wrist_test.z
       ekf.predict(dt = DT)
 
       # Correct with actual measurement vector z
-      corrected = ekf.update(z = measured_z)
+      corrected_x, convariance_P = ekf.update(z = measured_z)
 
       # value from kalman
-      pred_x, pred_y, pred_z = corrected.x[0, 0], corrected.x[1, 0], corrected.x[2, 0]
+      pred_x, pred_y, pred_z = corrected_x[0, 0], corrected_x[1, 0], corrected_x[2, 0]
 
-      cv2.circle(frame, (x, y), 8, (0, 0, 255), 1)
+      results.right_hand_landmarks.landmark[0].x = pred_x * w
+      results.right_hand_landmarks.landmark[0].y = pred_y * h
 
-      cv2.circle(frame, (pred_x, pred_y), 8, (0, 255, 0), 1)
-
-
-      # mp_drawing.draw_landmarks(
-      #   image=frame,
-      #   landmark_list=results.right_hand_landmarks,
-      #   connections=mp_holistic.HAND_CONNECTIONS,
-      #   landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
-      # )
+      mp_drawing.draw_landmarks(
+        image=frame,
+        landmark_list=results.right_hand_landmarks,
+        connections=mp_holistic.HAND_CONNECTIONS,
+        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+      )
 
     cv2.imshow(WINNAME, frame)
 

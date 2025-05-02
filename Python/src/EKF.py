@@ -22,13 +22,22 @@ class ExtendedKalmanFilter():
         - R: Measurement noise covariance matrix.
         - damping: Velocity damping factor for the motion model.
     '''
-    def __init__(self, state_dim_row: int, Q: np.ndarray, R: np.ndarray, damping: float=0.05):
+    def __init__(self, x: np.ndarray, Q: np.ndarray, R: np.ndarray, damping: float=0.05):
         self.JCB = JCB()
-        self.x = np.zeros(shape=(state_dim_row, 1))
-        self.P = np.eye(N=state_dim_row, k=0)
+        self.x = x
+        self.P = np.diag([1.0]*3 + [100]*3)
         self.Q = Q
         self.R = R
-        self.damping = 0.05
+        self.damping = damping
+
+    def __repr__(self):
+        return (
+            f"State x:\n{self.x}\n"
+            f"Covariance P:\n{self.P}\n"
+            f"Process noise Q:\n{self.Q}\n"
+            f"Measurement noise R:\n{self.R}\n"
+            f"Damping:\n{self.damping}\n"
+        )
 
     '''
         Predict Step (Time Update):
@@ -66,3 +75,5 @@ class ExtendedKalmanFilter():
         K = (self.P @ H.T @ np.linalg.inv(S))
         self.x = self.x + (K @ y)
         self.P = (np.eye(self.P.shape[0]) - K @ H) @ self.P
+
+        return self.x, self.P
