@@ -23,9 +23,11 @@ cv2.resizeWindow(WINNAME, WIDTH, HEIGHT)
 ekf = ExtendedKalmanFilter(
   x = np.zeros(shape=(6, 1)), # [px, py, pz, vx, vy, vz]
   Q = np.eye(6) * 0.01,       # process noise
-  R = np.diag([5, 5, 5]),    # trust x y , distrust z
+  R = np.eye(3) * 0.2,        # trust model
   damping = 0.05
 )
+
+ekf_left_hand = [ExtendedKalmanFilter(x = np.zeros(shape=(6, 1)), Q = np.eye(6) * 0.05, R = np.eye(3) * 0.05, damping = 0.1) for _ in range(21)]
 
 with mp_holistic.Holistic(
     static_image_mode=False,
@@ -77,49 +79,77 @@ with mp_holistic.Holistic(
     #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style()
     #   )
       
-    # if results.left_hand_landmarks:
-    #   mp_drawing.draw_landmarks(
-    #     image=frame,
-    #     landmark_list=results.left_hand_landmarks,
-    #     connections=mp_holistic.HAND_CONNECTIONS,
-    #     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
-    #   )
+    if results.left_hand_landmarks:
+      for i, landmark in enumerate(results.left_hand_landmarks.landmark):
+        x = landmark.x * w
+        y = landmark.y * h
+        z = landmark.z
 
-    if results.right_hand_landmarks:
-      wrist_test = results.right_hand_landmarks.landmark[0]
-      x = wrist_test.x * w
-      y = wrist_test.y * h
-      z = wrist_test.z
+        # Prepare measurement
+        measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
 
-      # Prepare measurement
-      measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
-      
-      # Predict next state
-      ekf.x[0][0] = wrist_test.x
-      ekf.x[1][0] = wrist_test.y
-      ekf.x[2][0] = wrist_test.z
-      ekf.predict(dt = DT)
+        # Predict next state
+        ekf_left_hand[i].x[0][0] = landmark.x
+        ekf_left_hand[i].x[1][0] = landmark.y
+        ekf_left_hand[i].x[2][0] = landmark.z
+        ekf_left_hand[i].predict(dt = DT)
+        
+        # Correct with actual measurement vector z
+        corrected_x, convariance_P = ekf_left_hand[i].update(measurement = measured)
 
-      # # Correct with actual measurement vector z
-      corrected_x, convariance_P = ekf.update(measurement = measured)
+        # value from kalman
+        pred_x, pred_y, pred_z = corrected_x[0, 0], corrected_x[1, 0], corrected_x[2, 0]
 
-      # value from kalman
-      pred_x, pred_y, pred_z = corrected_x[0, 0], corrected_x[1, 0], corrected_x[2, 0]
+        print(f"Raw_x [{i}]: {landmark.x}, pred_x [{i}]: {pred_x}")
+        print(f"Raw_y [{i}]: {landmark.y}, pred_y [{i}]: {pred_y}")
+        print(f"Raw_z [{i}]: {landmark.z}, pred_z [{i}]: {pred_z}")
 
-      # print(f"Raw_x: {wrist_test.x}, pred_x: {pred_x}")
-      # print(f"Raw_y: {wrist_test.y}, pred_y: {pred_y}")
-      print(f"Raw_z: {wrist_test.z}, pred_z: {pred_z}")
-
-      results.right_hand_landmarks.landmark[0].x = pred_x
-      results.right_hand_landmarks.landmark[0].y = pred_y
-      results.right_hand_landmarks.landmark[0].z = pred_z
+        results.left_hand_landmarks.landmark[i].x = pred_x
+        results.left_hand_landmarks.landmark[i].y = pred_y
+        results.left_hand_landmarks.landmark[i].z = z        # I don't use pred_z because something weird
 
       mp_drawing.draw_landmarks(
-          image=frame,
-          landmark_list=results.right_hand_landmarks,
-          connections=mp_holistic.HAND_CONNECTIONS,
-          landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+        image=frame,
+        landmark_list=results.left_hand_landmarks,
+        connections=mp_holistic.HAND_CONNECTIONS,
+        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
       )
+
+    # if results.right_hand_landmarks:
+    #   wrist_test = results.right_hand_landmarks.landmark[0]
+    #   x = wrist_test.x * w
+    #   y = wrist_test.y * h
+    #   z = wrist_test.z
+
+    #   # Prepare measurement
+    #   measured = np.array([[np.float32(x)], [np.float32(y)], [np.float32(z)]])
+      
+    #   # Predict next state
+    #   ekf.x[0][0] = wrist_test.x
+    #   ekf.x[1][0] = wrist_test.y
+    #   ekf.x[2][0] = wrist_test.z
+    #   ekf.predict(dt = DT)
+
+    #   # Correct with actual measurement vector z
+    #   corrected_x, convariance_P = ekf.update(measurement = measured)
+
+    #   # value from kalman
+    #   pred_x, pred_y, pred_z = corrected_x[0, 0], corrected_x[1, 0], corrected_x[2, 0]
+
+    #   # print(f"Raw_x: {wrist_test.x}, pred_x: {pred_x}")
+    #   # print(f"Raw_y: {wrist_test.y}, pred_y: {pred_y}")
+    #   # print(f"Raw_z: {wrist_test.z}, pred_z: {pred_z}")
+
+    #   results.right_hand_landmarks.landmark[0].x = pred_x
+    #   results.right_hand_landmarks.landmark[0].y = pred_y
+    #   results.right_hand_landmarks.landmark[0].z = z        # I don't use pred_z because something weird
+
+    #   mp_drawing.draw_landmarks(
+    #       image=frame,
+    #       landmark_list=results.right_hand_landmarks,
+    #       connections=mp_holistic.HAND_CONNECTIONS,
+    #       landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+    #   )
 
     cv2.imshow(WINNAME, frame)
 

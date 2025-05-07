@@ -61,10 +61,13 @@ class JacobianMatrix():
     def h(x: np.ndarray):
         # fx, fy = 1000, 1000   # focal length is omit cause working in normalized image coordinates. [0, 1]
         # cx, cy = 320, 240     # camera center is omit cause working in normalized image coordinates. [0, 1]
-
         px, py, pz = x[0, 0], x[1, 0], x[2, 0]
-        u = px / pz
-        v = py / pz
+        
+        epsilon = 1e-6
+        clamp_pz = np.clip(a=pz, a_min=epsilon, a_max=None)
+
+        u = px / clamp_pz
+        v = py / clamp_pz
         depth = pz
         return np.array([[u], [v], [depth]])
 
@@ -105,18 +108,21 @@ class JacobianMatrix():
     def jacobian_h(x: np.ndarray):
         # fx, fy = 1000, 1000                       # focal length is omit cause working in normalized image coordinates. [0, 1]
         px, py, pz = x[0, 0], x[1, 0], x[2, 0]
-        H = np.zeros((3, 6))                        # 3 rows (u, v, depth or z), 6 columns (px, py, pz, vx, vy, vz)
+        H = np.eye(3, 6)                            # 3 rows (u, v, depth or z), 6 columns (px, py, pz, vx, vy, vz)
         
+        epsilon = 1e-6
+        clamp_pz = np.clip(a=pz, a_min=epsilon, a_max=None)
+
         '''
             Calculus Quotient Rule
         '''
         # Partial derivatives for u = fx * px / pz
-        H[0, 0] = 1.0 / pz
-        H[0, 2] = -px / (pz**2)
+        H[0, 0] = 1.0 / clamp_pz # H[0, 0] = 1.0 / pz
+        H[0, 2] = -px / (clamp_pz**2) # H[0, 2] = -px / (pz**2)
 
         # Partial derivatives for v = fy * py / pz
-        H[1, 1] = 1.0 / pz
-        H[1, 2] = -py / (pz**2)
+        H[1, 1] = 1.0 / clamp_pz # H[1, 1] = 1.0 / pz
+        H[1, 2] = -py / (clamp_pz**2) # H[1, 2] = -py / (pz**2)
 
         # Partial derivatives for z = pz
         H[2, 2] = 1.0
