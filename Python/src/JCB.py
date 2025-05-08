@@ -6,10 +6,10 @@ Jacobian matrix and determinant https://en.wikipedia.org/wiki/Jacobian_matrix_an
 
 '''
 State (x) 
-    --[f()]--> Predicted State
-    --[h()]--> Predicted Measurement (u,v)
-    --[jacobian_f()]--> Linear motion model
-    --[jacobian_h()]--> Linear measurement model
+    --[f()]--> Predicted State Motion Model
+    --[h()]--> Predicted Measurement (u,v) (Correction Step)
+    --[jacobian_f()]--> Linear motion model 
+    --[jacobian_h()]--> Linear measurement model (Correction Step)
 '''
 class JacobianMatrix():
     def __init__(self):
@@ -33,9 +33,9 @@ class JacobianMatrix():
         px, py, pz, vx, vy, vz = x.flatten()
 
         # new velocity (reduces speed)
-        vx = vx * (1 - damping)
-        vy = vy * (1 - damping)
-        vz = vz * (1 - damping)
+        vx *= (1 - damping)
+        vy *= (1 - damping)
+        vz *=  (1 - damping)
 
         # new position
         px += vx * dt

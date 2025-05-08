@@ -25,7 +25,7 @@ class ExtendedKalmanFilter():
     def __init__(self, x: np.ndarray, Q: np.ndarray, R: np.ndarray, damping: float=0.05):
         self.JCB = JCB()
         self.x = x
-        self.P = np.diag([1.0]*3 + [100]*3)
+        self.P = np.diag([1.0]*3 + [100]*3) # Idk velocities so let set it 100 means uncertain about initial velocity
         self.Q = Q
         self.R = R
         self.damping = damping
