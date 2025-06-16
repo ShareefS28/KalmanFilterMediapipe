@@ -22,3 +22,5 @@ class ExtendedKalmanFilter_1D():
         K = (self.P @ H.T @ np.linalg.inv(S))
         self.x = self.x + (K @ y)
         self.P = (np.eye(self.P.shape[0]) - K @ H) @ self.P
+
+        return self.x, self.P

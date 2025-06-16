@@ -53,5 +53,5 @@ class JacobianMatrix_1D():
         H = partial_derivative_h / partial_derivative_x
     '''
     @staticmethod
-    def jc_h():
+    def jc_h(x: np.ndarray):
         return np.array([[1.0, 0.0]])
