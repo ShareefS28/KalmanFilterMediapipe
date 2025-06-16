@@ -41,7 +41,7 @@ class JacobianMatrix_1D():
         ]
     '''
     @staticmethod
-    def jc_f(dt: float, damping: float = 0.05):
+    def jc_f(x: np.ndarray, dt: float, damping: float = 0.05):
         F = np.eye(2)
         F[0, 1] = dt * (1 - damping)
         F[1, 1] = 1 - damping
