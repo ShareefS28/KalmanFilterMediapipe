@@ -21,6 +21,31 @@ class ExtendedKalmanFilter():
         - Q: Process noise covariance matrix.
         - R: Measurement noise covariance matrix.
         - damping: Velocity damping factor for the motion model.
+        
+        Explain:
+        - Process Noise Covariance (Q)
+            - Represents how much you trust the model to predict state changes.
+            - Higher values → assume more unpredictable motion (less trust in model).
+            - Lower values → assume smoother motion (more trust in model).
+        ! If your hand moves unpredictably, increase Q to let the filter adapt faster to changes. If the hand motion is smooth, lower Q to make tracking steadier and less noisy. !
+        
+        - Measurement Noise Covariance (R)
+            - Represents how much you trust the measurements.
+            - Higher values → filter trusts measurements less (so smoother but slower response).
+            - Lower values → filter trusts measurements more (faster, but potentially noisier).
+        ! If the input landmarks are noisy or jittery, increase R to reduce noise influence. If measurements are clean, decrease R to follow measurements more closely. !
+        
+        - Damping (in your motion model)
+            - Controls velocity decay over time (friction/smoothing effect).
+            - Higher damping → velocity reduces faster → smoother but laggy tracking.
+            - Lower damping → velocity stays longer → more responsive but possibly jittery.
+        ! Adjust the damping parameter to match how quickly your hand slows down in the model. !
+
+        - Initial State Covariance (P)
+            - Reflects initial uncertainty of your state estimate.
+            - Larger initial values mean the filter will trust measurements more initially until it “learns” the state.
+        ! You might want to experiment with setting P larger or smaller depending on initial tracking stability. !
+
     '''
     def __init__(self, x: np.ndarray, Q: np.ndarray, R: np.ndarray, damping: float=0.05):
         self.JCB = JCB()

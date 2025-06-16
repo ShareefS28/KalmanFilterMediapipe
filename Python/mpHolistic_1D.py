@@ -20,14 +20,7 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) # windows use Direct Show cv2.CAP_DSHOW
 cv2.namedWindow(WINNAME, cv2.WINDOW_GUI_NORMAL)
 cv2.resizeWindow(WINNAME, WIDTH, HEIGHT)
 
-ekf = ExtendedKalmanFilter_1D(
-  x = np.zeros(shape=(6, 1)), # [px, py, pz, vx, vy, vz]
-  Q = np.eye(6) * 0.01,       # process noise
-  R = np.eye(3) * 0.2,        # trust model
-  damping = 0.05
-)
-
-ekf_left_hand_x = [ExtendedKalmanFilter_1D(x=np.zeros(shape=(2, 1)), Q=np.eye(2) * 0.01, R=np.eye(1) * 0.2, damping=0.05) for _ in range(21)]
+ekf_left_hand = [[ExtendedKalmanFilter_1D(x=np.zeros(shape=(2, 1)), Q=np.eye(2) * 0.01, R=np.eye(1) * 0.2, damping=0.05) for _ in range(21)] for _ in range(3)]
 
 with mp_holistic.Holistic(
     static_image_mode=False,
@@ -48,7 +41,7 @@ with mp_holistic.Holistic(
       continue
 
     frame.flags.writeable = True
-    frame = cv2.flip(frame, 1)
+    # frame = cv2.flip(frame, 1)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # Recolor frame
     results = holistic.process(rgb_frame) # Make Detection
 
@@ -56,24 +49,27 @@ with mp_holistic.Holistic(
 
     if results.left_hand_landmarks:
       for i, landmark in enumerate(results.left_hand_landmarks.landmark):
-        x = landmark.x
-        y = landmark.y
-        z = landmark.z
-
-        # Prepare measurement
-        measured = np.array([[np.float32(x)]])
+        # Prepare measurement this is the observed data
+        measured = np.array([[np.float32(landmark.x)], [np.float32(landmark.y)], [np.float32(landmark.z)]])
 
         # Predict next state
-        ekf_left_hand_x[i].x[0][0] = landmark.x
-        ekf_left_hand_x[i].predict(dt = DT)
+        ekf_left_hand[0][i].predict(dt = DT)  # x
+        ekf_left_hand[1][i].predict(dt = DT)  # y
+        ekf_left_hand[2][i].predict(dt = DT)  # z
         
         # Correct with actual measurement vector z
-        corrected_x, convariance_P = ekf_left_hand_x[i].update(measurement = measured)
+        corrected_x_axis_x, convariance_P_axis_x = ekf_left_hand[0][i].update(measurement = measured[0][0])
+        corrected_x_axis_y, convariance_P_axis_y = ekf_left_hand[1][i].update(measurement = measured[1][0])
+        corrected_x_axis_z, convariance_P_axus_z = ekf_left_hand[2][i].update(measurement = measured[2][0])
 
         # value from kalman
-        pred_x = corrected_x[0, 0]
+        pred_x = corrected_x_axis_x[0, 0]
+        pred_y = corrected_x_axis_y[0, 0]
+        pred_z = corrected_x_axis_z[0, 0]
 
         print(f"Raw_x [{i}]: {landmark.x}, pred_x [{i}]: {pred_x}")
+        print(f"Raw_y [{i}]: {landmark.y}, pred_y [{i}]: {pred_y}")
+        print(f"Raw_z [{i}]: {landmark.z}, pred_z [{i}]: {pred_z}")
 
         results.left_hand_landmarks.landmark[i].x = pred_x
 
